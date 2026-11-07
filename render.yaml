@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: researchpilot-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-1.5-flash
+      - key: AI_TOOLS_GROQ_ONLY
+        value: "True"
+      - key: CHROMA_DB_PATH
+        value: data/chroma_db
+      - key: UPLOAD_DIR
+        value: data/uploads
