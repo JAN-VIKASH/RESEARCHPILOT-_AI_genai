@@ -2,6 +2,9 @@ services:
   - type: web
     name: researchpilot-backend
     runtime: python
+    plan: free
+    region: oregon
+    branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -25,3 +28,4 @@ services:
         value: data/chroma_db
       - key: UPLOAD_DIR
         value: data/uploads
+
