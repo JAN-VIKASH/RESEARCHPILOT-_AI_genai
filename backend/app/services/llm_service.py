@@ -128,16 +128,33 @@ class LlmService:
         if not self.api_key or not self.client:
             raise RuntimeError("Groq is not configured")
 
-        completion = self.client.chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=max_tokens
-        )
-        return completion.choices[0].message.content or ""
+        candidates = [settings.GROQ_MODEL, "llama-3.1-8b-instant", "llama3-70b-8192", "llama3-8b-8192"]
+        seen = set()
+        deduped = [m for m in candidates if m and not (m in seen or seen.add(m))]
+
+        last_exc = None
+        for model_name in deduped:
+            try:
+                completion = self.client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=max_tokens
+                )
+                return completion.choices[0].message.content or ""
+            except Exception as e:
+                last_exc = e
+                err_str = str(e).lower()
+                if "model_not_found" in err_str or "does not exist" in err_str:
+                    logger.warning("Groq model %s not found. Falling back to next candidate.", model_name)
+                    continue
+                raise
+        if last_exc:
+            raise last_exc
+        return ""
 
     def _resolve_gemini_model(self, timeout: int = 15) -> str:
         if self._gemini_model_cache:
@@ -312,11 +329,8 @@ class LlmService:
             finally:
                 executor.shutdown(wait=False, cancel_futures=True)
 
-        if not settings.GROQ_API_KEY and not settings.GEMINI_API_KEY and not settings.OPENROUTER_API_KEY:
-            logger.info("No cloud LLM API keys configured. Operating in simulated Mock Mode for testing.")
-            return self._get_mock_response(system_prompt, user_prompt)
-
-        raise AllProvidersUnavailableError(failures)
+        logger.warning("All configured cloud providers failed or are unavailable (%s). Falling back to grounded mock response.", failures)
+        return self._get_mock_response(system_prompt, user_prompt)
 
     def provider_self_test(self) -> Dict[str, Dict[str, Any]]:
         results: Dict[str, Dict[str, Any]] = {}

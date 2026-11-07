@@ -170,17 +170,28 @@ class HybridSearchService:
         }
 
     async def _enrich_access_urls(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        lookups = await asyncio.gather(
-            *(
-                openalex_service.lookup(doi=paper.get("doi") or "", title=paper.get("title") or "")
-                for paper in papers
-            ),
-            return_exceptions=True,
-        )
+        target_papers = papers[:15]
+        remaining = papers[15:]
+        try:
+            lookups = await asyncio.wait_for(
+                asyncio.gather(
+                    *(
+                        openalex_service.lookup(doi=paper.get("doi") or "", title=paper.get("title") or "")
+                        for paper in target_papers
+                    ),
+                    return_exceptions=True,
+                ),
+                timeout=7.0,
+            )
+        except Exception:
+            lookups = [{}] * len(target_papers)
+
         enriched = []
-        for paper, lookup in zip(papers, lookups):
+        for paper, lookup in zip(target_papers, lookups):
             openalex = lookup if isinstance(lookup, dict) else {}
             enriched.append(self._select_access_url(paper, openalex))
+        for paper in remaining:
+            enriched.append(self._select_access_url(paper, {}))
         return enriched
 
     def _select_access_url(self, paper: Dict[str, Any], openalex: Dict[str, str]) -> Dict[str, Any]:
