@@ -180,6 +180,23 @@ Before setting up the project, make sure you have the following installed:
 
 ---
 
+## 🌐 Live Production Deployment
+
+ResearchPilot AI is architected for decoupled cloud deployment:
+
+| Component | Platform | Live URL | Status |
+| :--- | :--- | :--- | :--- |
+| **Frontend Web App** | **Vercel** | [https://frontend-ecru-three-12.vercel.app](https://frontend-ecru-three-12.vercel.app) | 🟢 Live (Vite + React 19 SPA) |
+| **Backend API Hub** | **Render / Railway** | `https://<backend-host>/api/v1` | ⚙️ Configured via `render.yaml` & `Dockerfile` |
+| **API Documentation** | **FastAPI Swagger** | `https://<backend-host>/docs` | ⚙️ OpenAPI 3.0 Interactive Docs |
+
+### Deployment Architecture
+* **Frontend:** Deployed to Vercel global edge network with single-page routing rules (`frontend/vercel.json`).
+* **Backend:** Containerized Python 3.11 ASGI service running FastAPI and Uvicorn (`render.yaml`, `backend/Dockerfile`, `backend/Procfile`).
+* **Storage:** SQLite relational database with declarative auto-migrations and local ChromaDB persistent vector index.
+
+---
+
 ## 🔒 Environment Configuration
 
 The application backend reads variables from `.env`. A complete configuration includes:
