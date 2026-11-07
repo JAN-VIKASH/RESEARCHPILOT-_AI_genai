@@ -128,7 +128,11 @@ class LlmService:
         if not self.api_key or not self.client:
             raise RuntimeError("Groq is not configured")
 
-        candidates = [settings.GROQ_MODEL, "llama-3.1-8b-instant", "llama3-70b-8192", "llama3-8b-8192"]
+        candidates = [
+            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
+            settings.GROQ_MODEL,
+        ]
         seen = set()
         deduped = [m for m in candidates if m and not (m in seen or seen.add(m))]
 
@@ -144,14 +148,12 @@ class LlmService:
                     temperature=0.3,
                     max_tokens=max_tokens
                 )
+                self._groq_model_cache = model_name
                 return completion.choices[0].message.content or ""
             except Exception as e:
                 last_exc = e
-                err_str = str(e).lower()
-                if "model_not_found" in err_str or "does not exist" in err_str:
-                    logger.warning("Groq model %s not found. Falling back to next candidate.", model_name)
-                    continue
-                raise
+                logger.warning("Groq model %s error (%s). Trying next candidate.", model_name, e)
+                continue
         if last_exc:
             raise last_exc
         return ""
