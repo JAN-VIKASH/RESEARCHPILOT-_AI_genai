@@ -131,12 +131,14 @@ class LlmService:
         candidates = [
             "llama-3.1-8b-instant",
             "llama-3.3-70b-versatile",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it",
             settings.GROQ_MODEL,
         ]
         seen = set()
         deduped = [m for m in candidates if m and not (m in seen or seen.add(m))]
 
-        last_exc = None
+        attempts = {}
         for model_name in deduped:
             try:
                 completion = self.client.chat.completions.create(
@@ -151,12 +153,10 @@ class LlmService:
                 self._groq_model_cache = model_name
                 return completion.choices[0].message.content or ""
             except Exception as e:
-                last_exc = e
+                attempts[model_name] = str(e)
                 logger.warning("Groq model %s error (%s). Trying next candidate.", model_name, e)
                 continue
-        if last_exc:
-            raise last_exc
-        return ""
+        raise RuntimeError(f"All Groq models failed: {attempts}")
 
     def _resolve_gemini_model(self, timeout: int = 15) -> str:
         if self._gemini_model_cache:
